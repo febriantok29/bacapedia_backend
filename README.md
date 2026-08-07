@@ -13,7 +13,7 @@ Backend API untuk sistem manajemen perpustakaan digital "Bacapedia" — Perpusta
 ## Instalasi
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/febriantok29/bacapedia_backend.git
 cd bacapedia_backend
 
 composer install
