@@ -9,18 +9,18 @@
 <body class="bg-gray-100 min-h-screen">
     <nav class="bg-blue-700 text-white p-4 shadow">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <a href="/panel" class="text-xl font-bold">Bacapedia</a>
+            <a href="/" class="text-xl font-bold">📚 Bacapedia</a>
             <div class="flex gap-4 items-center">
-                <a href="/panel" class="hover:underline">Dashboard</a>
-                <a href="/panel/books" class="hover:underline">Buku</a>
-                <a href="/panel/categories" class="hover:underline">Kategori</a>
+                <a href="/" class="hover:underline">Dashboard</a>
+                <a href="/books" class="hover:underline">Buku</a>
+                <a href="/categories" class="hover:underline">Kategori</a>
                 @if(session('user_role') === 'Admin')
-                <a href="/panel/users" class="hover:underline">Users</a>
+                <a href="/users" class="hover:underline">Users</a>
                 @endif
-                <a href="/panel/borrows" class="hover:underline">Peminjaman</a>
+                <a href="/borrows" class="hover:underline">Peminjaman</a>
                 <span class="text-blue-200">|</span>
                 <span class="text-sm">{{ session('user_name') }} ({{ session('user_role') }})</span>
-                <form method="POST" action="/panel/logout">
+                <form method="POST" action="/logout" class="inline">
                     @csrf
                     <button type="submit" class="bg-red-500 px-3 py-1 rounded text-sm hover:bg-red-600">Logout</button>
                 </form>
