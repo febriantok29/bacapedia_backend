@@ -1,24 +1,28 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bacapedia - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
     <div class="bg-white p-8 rounded-lg shadow-md w-96">
-        <h1 class="text-2xl font-bold text-center mb-6">📚 Bacapedia</h1>
+        <h1 class="text-2xl font-bold text-center mb-6">Bacapedia</h1>
 
-        @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">{{ session('error') }}</div>
+        @if (session('error'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+                {{ session('error') }}</div>
         @endif
 
         <form method="POST" action="/login">
             @csrf
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-1">Email</label>
-                <input type="email" name="credentials" class="w-full border rounded px-3 py-2" value="{{ old('credentials') }}" required>
+                <input type="email" name="credentials" class="w-full border rounded px-3 py-2"
+                    value="{{ old('credentials') }}" required>
             </div>
             <div class="mb-6">
                 <label class="block text-sm font-medium mb-1">Password</label>
@@ -27,8 +31,10 @@
             <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Login</button>
         </form>
 
-        <p class="text-center mt-4 text-sm">Belum punya akun? <a href="/register" class="text-blue-600 hover:underline">Daftar</a></p>
+        <p class="text-center mt-4 text-sm">Belum punya akun? <a href="/register"
+                class="text-blue-600 hover:underline">Daftar</a></p>
         <p class="text-xs text-gray-400 mt-3 text-center">admin@bacapedia.com / password123</p>
     </div>
 </body>
+
 </html>
