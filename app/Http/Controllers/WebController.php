@@ -22,7 +22,7 @@ class WebController extends Controller
         if (Session::has('user_id')) {
             return redirect('/');
         }
-        return view('panel.login');
+        return view('pages.login');
     }
 
     public function doLogin(Request $request)
@@ -46,7 +46,7 @@ class WebController extends Controller
         if (Session::has('user_id')) {
             return redirect('/');
         }
-        return view('panel.register');
+        return view('pages.register');
     }
 
     public function doRegister(Request $request)
@@ -98,7 +98,7 @@ class WebController extends Controller
         $totalPenalty = Borrow::where('penalty', '>', 0)->sum('penalty');
         $totalCategories = Category::count();
 
-        return view('panel.dashboard', compact(
+        return view('pages.dashboard', compact(
             'totalBooks', 'totalUsers', 'totalActive', 'totalOverdue',
             'totalReturned', 'totalLate', 'totalPenalty', 'totalCategories'
         ));
@@ -124,7 +124,7 @@ class WebController extends Controller
         $books = $query->orderBy('title')->paginate(15);
         $categories = Category::orderBy('name')->get();
 
-        return view('panel.books', compact('books', 'categories'));
+        return view('pages.books', compact('books', 'categories'));
     }
 
     public function storeBook(Request $request)
@@ -173,7 +173,7 @@ class WebController extends Controller
     public function categories()
     {
         $categories = Category::withCount('books')->orderBy('name')->paginate(15);
-        return view('panel.categories', compact('categories'));
+        return view('pages.categories', compact('categories'));
     }
 
     public function storeCategory(Request $request)
@@ -232,7 +232,7 @@ class WebController extends Controller
         $books = Book::where('stock', '>', 0)->orderBy('title')->get();
         $users = $isStaff ? User::where('role', UserRole::MEMBER->value)->orderBy('name')->get() : collect();
 
-        return view('panel.borrows', compact('borrows', 'books', 'users', 'isStaff'));
+        return view('pages.borrows', compact('borrows', 'books', 'users', 'isStaff'));
     }
 
     public function borrowDetail(string $id)
@@ -248,7 +248,7 @@ class WebController extends Controller
             return back()->with('error', 'Anda tidak memiliki akses');
         }
 
-        return view('panel.borrow-detail', compact('borrow'));
+        return view('pages.borrow-detail', compact('borrow'));
     }
 
     public function storeBorrow(Request $request)
@@ -335,7 +335,7 @@ class WebController extends Controller
         }
 
         $users = $query->orderBy('name')->paginate(15);
-        return view('panel.users', compact('users'));
+        return view('pages.users', compact('users'));
     }
 
     public function storeUser(Request $request)
