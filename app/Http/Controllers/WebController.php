@@ -2,24 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Book;
-use App\Models\Borrow;
-use App\Models\Category;
-use App\Models\User;
-use App\Services\BorrowService;
-use App\Support\Enums\BorrowStatus;
-use App\Support\Enums\UserRole;
-use Carbon\Carbon;
+use App\Support\ApiClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 
 class WebController extends Controller
 {
+    private ApiClient $api;
+
+    public function __construct(ApiClient $api)
+    {
+        $this->api = $api;
+    }
+
     public function login()
     {
-        if (Session::has('user_id')) {
+        if (Session::has('access_token')) {
             return redirect('/');
         }
         return view('pages.login');
@@ -27,23 +26,17 @@ class WebController extends Controller
 
     public function doLogin(Request $request)
     {
-        $user = User::where('email', strtolower($request->credentials))->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return back()->with('error', 'Email atau password salah')->withInput();
-        }
-
-        Session::put('user_id', $user->id);
-        Session::put('user_name', $user->name);
-        Session::put('user_role', $user->role);
-        Session::put('user_email', $user->email);
-
-        return redirect('/');
+        return $this->authenticate('/auth/login', [
+            'credentials' => $request->credentials,
+            'password' => $request->password,
+            'is_debug' => true,
+            'access_token_ttl' => 86400,
+        ]);
     }
 
     public function register()
     {
-        if (Session::has('user_id')) {
+        if (Session::has('access_token')) {
             return redirect('/');
         }
         return view('pages.register');
@@ -51,239 +44,169 @@ class WebController extends Controller
 
     public function doRegister(Request $request)
     {
-        $existing = User::where('email', strtolower($request->email))->first();
-        if ($existing) {
-            return back()->with('error', 'Email sudah digunakan')->withInput();
-        }
-
-        $prefix = 'USR-';
-        $lastUser = User::where('user_code', 'like', $prefix . '%')->orderByDesc('user_code')->first();
-        $nextNumber = $lastUser ? (int) substr($lastUser->user_code, -5) + 1 : 1;
-        $userCode = $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
-
-        $user = User::create([
-            'user_code' => $userCode,
+        return $this->authenticate('/auth/register', [
             'name' => $request->name,
-            'email' => strtolower($request->email),
-            'password' => Hash::make($request->password),
-            'role' => UserRole::MEMBER->value,
+            'email' => $request->email,
+            'password' => $request->password,
         ]);
-
-        $user->created_by = $user->id;
-        $user->save();
-
-        Session::put('user_id', $user->id);
-        Session::put('user_name', $user->name);
-        Session::put('user_role', $user->role);
-        Session::put('user_email', $user->email);
-
-        return redirect('/');
     }
 
     public function logout()
     {
+        $this->api->post('/auth/logout');
         Session::flush();
         return redirect('/login');
     }
 
     public function dashboard()
     {
-        $totalBooks = Book::count();
-        $totalUsers = User::count();
-        $totalActive = Borrow::where('status', BorrowStatus::ACTIVE->value)->count();
-        $totalOverdue = Borrow::where('status', BorrowStatus::ACTIVE->value)
-            ->where('due_date', '<', Carbon::today())->count();
-        $totalReturned = Borrow::where('status', BorrowStatus::RETURNED->value)->count();
-        $totalLate = Borrow::where('status', BorrowStatus::OVERDUE->value)->count();
-        $totalPenalty = Borrow::where('penalty', '>', 0)->sum('penalty');
-        $totalCategories = Category::count();
+        $summary = $this->api->get('/borrows/summary');
+        $books = $this->api->get('/books', ['per_page' => 1]);
+        $categories = $this->api->get('/categories', ['per_page' => 1]);
 
-        return view('pages.dashboard', compact(
-            'totalBooks', 'totalUsers', 'totalActive', 'totalOverdue',
-            'totalReturned', 'totalLate', 'totalPenalty', 'totalCategories'
-        ));
+        $totalUsers = 0;
+        if (Session::get('user_role') === 'Admin') {
+            $users = $this->api->get('/users', ['per_page' => 1]);
+            $totalUsers = $users['metadata']['total'] ?? 0;
+        }
+
+        return view('pages.dashboard', [
+            'totalBooks' => $books['metadata']['total'] ?? 0,
+            'totalCategories' => $categories['metadata']['total'] ?? 0,
+            'totalUsers' => $totalUsers,
+            'totalActive' => $summary['data']['total_active'] ?? 0,
+            'totalOverdue' => $summary['data']['total_overdue'] ?? 0,
+            'totalReturned' => $summary['data']['total_returned'] ?? 0,
+            'totalLate' => $summary['data']['total_late_returned'] ?? 0,
+            'totalPenalty' => $summary['data']['total_penalty_collected'] ?? 0,
+        ]);
     }
 
     public function books(Request $request)
     {
-        $query = Book::with('category');
+        $params = $this->filterQuery($request, ['search', 'category_id', 'published_year', 'page', 'per_page']);
+        $data = $this->api->get('/books', $params);
+        $categories = $this->api->get('/categories', ['per_page' => 100]);
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('author', 'like', "%{$search}%")
-                  ->orWhere('book_code', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        $books = $query->orderBy('title')->paginate(15);
-        $categories = Category::orderBy('name')->get();
-
-        return view('pages.books', compact('books', 'categories'));
+        return view('pages.books', [
+            'books' => $this->toPaginator($data, $request),
+            'categories' => $categories['data'] ?? [],
+        ]);
     }
 
     public function storeBook(Request $request)
     {
-        $year = now()->format('Y');
-        $prefix = "BK-{$year}-";
-        $lastBook = Book::where('book_code', 'like', "{$prefix}%")->orderByDesc('book_code')->first();
-        $nextNumber = $lastBook ? (int) substr($lastBook->book_code, -5) + 1 : 1;
-        $bookCode = $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
-
-        Book::create([
-            'book_code' => $bookCode,
+        return $this->mutate($this->api->post('/books', [
             'category_id' => $request->category_id,
             'title' => $request->title,
             'author' => $request->author,
             'publisher' => $request->publisher,
-            'published_year' => $request->published_year,
-            'stock' => $request->stock,
-        ]);
-
-        return back()->with('success', 'Buku berhasil ditambahkan');
+            'published_year' => (int) $request->published_year,
+            'stock' => (int) $request->stock,
+        ]));
     }
 
     public function updateBook(Request $request, string $id)
     {
-        $book = Book::find($id);
-        if (!$book) {
-            return back()->with('error', 'Buku tidak ditemukan');
-        }
-
-        $book->fill($request->only(['category_id', 'title', 'author', 'publisher', 'published_year', 'stock']));
-        $book->save();
-
-        return back()->with('success', 'Buku berhasil diperbarui');
+        return $this->mutate($this->api->put("/books/{$id}", [
+            'category_id' => $request->category_id,
+            'title' => $request->title,
+            'author' => $request->author,
+            'publisher' => $request->publisher,
+            'published_year' => (int) $request->published_year,
+            'stock' => (int) $request->stock,
+        ]));
     }
 
     public function deleteBook(string $id)
     {
-        $book = Book::find($id);
-        if ($book) {
-            $book->delete();
-        }
-        return back()->with('success', 'Buku berhasil dihapus');
+        return $this->mutate($this->api->delete("/books/{$id}"));
     }
 
-    public function categories()
+    public function categories(Request $request)
     {
-        $categories = Category::withCount('books')->orderBy('name')->paginate(15);
-        return view('pages.categories', compact('categories'));
+        $params = $this->filterQuery($request, ['search', 'page', 'per_page']);
+        $data = $this->api->get('/categories', $params);
+
+        return view('pages.categories', [
+            'categories' => $this->toPaginator($data, $request),
+        ]);
     }
 
     public function storeCategory(Request $request)
     {
-        Category::create(['name' => $request->name]);
-        return back()->with('success', 'Kategori berhasil ditambahkan');
+        return $this->mutate($this->api->post('/categories', ['name' => $request->name]));
     }
 
     public function updateCategory(Request $request, string $id)
     {
-        $category = Category::find($id);
-        if (!$category) {
-            return back()->with('error', 'Kategori tidak ditemukan');
-        }
-
-        $category->name = $request->name;
-        $category->save();
-
-        return back()->with('success', 'Kategori berhasil diperbarui');
+        return $this->mutate($this->api->put("/categories/{$id}", ['name' => $request->name]));
     }
 
     public function deleteCategory(string $id)
     {
-        $category = Category::find($id);
-        if ($category) {
-            $category->delete();
-        }
-        return back()->with('success', 'Kategori berhasil dihapus');
+        return $this->mutate($this->api->delete("/categories/{$id}"));
     }
 
     public function borrows(Request $request)
     {
-        $role = Session::get('user_role');
-        $isStaff = in_array($role, [UserRole::ADMIN->value, UserRole::OFFICER->value]);
-
-        $query = Borrow::with(['book', 'user']);
-
-        if (!$isStaff) {
-            $query->where('user_id', Session::get('user_id'));
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('user_id') && $isStaff) {
-            $query->where('user_id', $request->user_id);
-        }
-
+        $params = $this->filterQuery($request, ['status', 'user_id', 'page', 'per_page']);
         if ($request->boolean('is_overdue')) {
-            $query->where('status', BorrowStatus::ACTIVE->value)
-                  ->where('due_date', '<', Carbon::today());
+            $params['is_overdue'] = '1';
         }
 
-        $borrows = $query->orderByDesc('created_at')->paginate(15);
-        $books = Book::where('stock', '>', 0)->orderBy('title')->get();
-        $users = $isStaff ? User::where('role', UserRole::MEMBER->value)->orderBy('name')->get() : collect();
+        $data = $this->api->get('/borrows', $params);
+        $booksData = $this->api->get('/books', ['per_page' => 100]);
 
-        return view('pages.borrows', compact('borrows', 'books', 'users', 'isStaff'));
+        $isStaff = in_array(Session::get('user_role'), ['Admin', 'Petugas']);
+        $usersData = $isStaff ? $this->api->get('/users', ['per_page' => 100]) : ['data' => []];
+
+        return view('pages.borrows', [
+            'borrows' => $this->toPaginator($data, $request),
+            'books' => $booksData['data'] ?? [],
+            'users' => $usersData['data'] ?? [],
+            'isStaff' => $isStaff,
+        ]);
     }
 
     public function borrowDetail(string $id)
     {
-        $borrow = Borrow::with(['book', 'user', 'histories'])->find($id);
+        $res = $this->api->get("/borrows/{$id}");
 
-        if (!$borrow) {
-            return back()->with('error', 'Data peminjaman tidak ditemukan');
+        if (($res['success'] ?? false) !== true) {
+            return redirect('/borrows')->with('error', $res['message'] ?? 'Data tidak ditemukan');
         }
 
-        $role = Session::get('user_role');
-        if ($role === UserRole::MEMBER->value && $borrow->user_id !== Session::get('user_id')) {
-            return back()->with('error', 'Anda tidak memiliki akses');
-        }
-
-        return view('pages.borrow-detail', compact('borrow'));
+        return view('pages.borrow-detail', ['borrow' => (object) $res['data']]);
     }
 
     public function storeBorrow(Request $request)
     {
-        $borrowService = app(BorrowService::class);
-        $role = Session::get('user_role');
-        $isStaff = in_array($role, [UserRole::ADMIN->value, UserRole::OFFICER->value]);
-
+        $isStaff = in_array(Session::get('user_role'), ['Admin', 'Petugas']);
         $bookIds = $request->input('book_ids', []);
+
         if (empty($bookIds)) {
             return back()->with('error', 'Pilih minimal 1 buku');
-        }
-
-        $borrowUserId = ($isStaff && $request->filled('user_id'))
-            ? $request->user_id
-            : Session::get('user_id');
-
-        $borrowUser = User::find($borrowUserId);
-        if (!$borrowUser) {
-            return back()->with('error', 'User tidak ditemukan');
         }
 
         $successCount = 0;
         $errors = [];
 
         foreach ($bookIds as $bookId) {
-            $result = $borrowService->borrow($borrowUser, $bookId, Session::get('user_id'), [
-                'borrow_date' => $request->borrow_date,
-            ]);
+            $payload = ['book_id' => $bookId];
+            if ($request->borrow_date) {
+                $payload['borrow_date'] = $request->borrow_date;
+            }
+            if ($isStaff && $request->user_id) {
+                $payload['user_id'] = $request->user_id;
+            }
 
-            if ($result['success']) {
+            $res = $this->api->post('/borrows', $payload);
+
+            if ($res['success'] ?? false) {
                 $successCount++;
             } else {
-                $book = Book::find($bookId);
-                $errors[] = ($book->title ?? $bookId) . ': ' . $result['message'];
+                $errors[] = $res['message'] ?? 'Gagal meminjam';
             }
         }
 
@@ -291,10 +214,8 @@ class WebController extends Controller
             return back()->with('success', "Berhasil meminjam {$successCount} buku");
         }
 
-        if ($successCount > 0 && !empty($errors)) {
-            return back()
-                ->with('success', "Berhasil meminjam {$successCount} buku")
-                ->with('error', implode('. ', $errors));
+        if ($successCount > 0) {
+            return back()->with('success', "Berhasil meminjam {$successCount} buku")->with('error', implode('. ', $errors));
         }
 
         return back()->with('error', implode('. ', $errors));
@@ -302,14 +223,13 @@ class WebController extends Controller
 
     public function returnBorrow(string $id)
     {
-        $borrowService = app(BorrowService::class);
-        $result = $borrowService->returnBook($id, Session::get('user_id'));
+        $res = $this->api->post("/borrows/{$id}/return");
 
-        if (!$result['success']) {
-            return back()->with('error', $result['message']);
+        if (($res['success'] ?? false) !== true) {
+            return back()->with('error', $res['message'] ?? 'Gagal mengembalikan');
         }
 
-        $penalty = $result['data']->penalty ?? 0;
+        $penalty = $res['data']['penalty'] ?? 0;
         $message = 'Pengembalian berhasil';
         if ($penalty > 0) {
             $message .= '. Denda: Rp' . number_format($penalty, 0, ',', '.');
@@ -320,82 +240,92 @@ class WebController extends Controller
 
     public function users(Request $request)
     {
-        $query = User::query();
+        $params = $this->filterQuery($request, ['search', 'role', 'page', 'per_page']);
+        $data = $this->api->get('/users', $params);
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('role')) {
-            $query->where('role', $request->role);
-        }
-
-        $users = $query->orderBy('name')->paginate(15);
-        return view('pages.users', compact('users'));
+        return view('pages.users', [
+            'users' => $this->toPaginator($data, $request),
+        ]);
     }
 
     public function storeUser(Request $request)
     {
-        $existing = User::where('email', strtolower($request->email))->first();
-        if ($existing) {
-            return back()->with('error', 'Email sudah digunakan')->withInput();
-        }
-
-        $prefix = 'USR-';
-        $lastUser = User::where('user_code', 'like', $prefix . '%')->orderByDesc('user_code')->first();
-        $nextNumber = $lastUser ? (int) substr($lastUser->user_code, -5) + 1 : 1;
-        $userCode = $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
-
-        User::create([
-            'user_code' => $userCode,
+        return $this->mutate($this->api->post('/users', [
             'name' => $request->name,
-            'email' => strtolower($request->email),
-            'password' => Hash::make($request->password),
+            'email' => $request->email,
+            'password' => $request->password,
             'role' => $request->role,
-        ]);
-
-        return back()->with('success', 'User berhasil ditambahkan');
+        ]));
     }
 
     public function updateUser(Request $request, string $id)
     {
-        $user = User::find($id);
-        if (!$user) {
-            return back()->with('error', 'User tidak ditemukan');
-        }
-
-        if ($request->filled('name')) $user->name = $request->name;
-        if ($request->filled('email')) $user->email = strtolower($request->email);
-        if ($request->filled('role')) $user->role = $request->role;
-        $user->save();
-
-        return back()->with('success', 'User berhasil diperbarui');
+        return $this->mutate($this->api->put("/users/{$id}", array_filter($request->only('name', 'email', 'role'))));
     }
 
     public function deleteUser(string $id)
     {
-        $user = User::find($id);
-        if ($user && $user->id !== Session::get('user_id')) {
-            $user->delete();
-            return back()->with('success', 'User berhasil dihapus');
-        }
-        return back()->with('error', 'Tidak dapat menghapus akun sendiri');
+        return $this->mutate($this->api->delete("/users/{$id}"));
     }
 
     public function resetUserPassword(Request $request, string $id)
     {
-        $user = User::find($id);
-        if (!$user) {
-            return back()->with('error', 'User tidak ditemukan');
+        return $this->mutate($this->api->post("/users/{$id}/reset-password", ['password' => $request->password]));
+    }
+
+    private function authenticate(string $path, array $payload): RedirectResponse
+    {
+        $res = $this->api->post($path, $payload);
+
+        if (($res['success'] ?? false) !== true) {
+            return back()->with('error', $res['message'] ?? 'Terjadi kesalahan')->withInput();
         }
 
-        $user->password = Hash::make($request->password);
-        $user->save();
+        Session::put('access_token', $res['data']['token']['access_token']);
+        Session::put('refresh_token', $res['data']['token']['refresh_token']);
+        Session::put('user_id', $res['data']['user']['id']);
+        Session::put('user_name', $res['data']['user']['name']);
+        Session::put('user_role', $res['data']['user']['role']);
+        Session::put('user_email', $res['data']['user']['email']);
 
-        return back()->with('success', 'Password berhasil direset');
+        return redirect('/');
+    }
+
+    private function mutate(array $res): RedirectResponse
+    {
+        if (($res['success'] ?? false) !== true) {
+            $errorMsg = $res['message'] ?? 'Terjadi kesalahan';
+            if (!empty($res['errors'])) {
+                $errorMsg .= ': ' . collect($res['errors'])->flatten()->implode(', ');
+            }
+            return back()->with('error', $errorMsg)->withInput();
+        }
+
+        return back()->with('success', $res['message'] ?? 'Berhasil');
+    }
+
+    private function filterQuery(Request $request, array $keys): array
+    {
+        $params = [];
+        foreach ($keys as $key) {
+            if ($request->filled($key)) {
+                $params[$key] = $request->input($key);
+            }
+        }
+        return $params;
+    }
+
+    private function toPaginator(array $apiResponse, Request $request)
+    {
+        $items = $apiResponse['data'] ?? [];
+        $metadata = $apiResponse['metadata'] ?? [];
+
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            collect($items)->map(fn($item) => (object) $item),
+            $metadata['total'] ?? count($items),
+            $metadata['per_page'] ?? 15,
+            $metadata['current_page'] ?? 1,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
     }
 }

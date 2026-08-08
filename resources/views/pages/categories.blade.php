@@ -16,7 +16,7 @@
             @forelse($categories as $cat)
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3 font-medium">{{ $cat->name }}</td>
-                <td class="px-4 py-3">{{ $cat->books_count }}</td>
+                <td class="px-4 py-3">{{ $cat->books_count ?? '-' }}</td>
                 @if(in_array(session('user_role'), ['Admin', 'Petugas']))
                 <td class="px-4 py-3">
                     <form method="POST" action="/categories/{{ $cat->id }}/delete" class="inline">
@@ -30,6 +30,6 @@
             <tr><td colspan="3" class="px-4 py-12 text-center text-gray-400">Belum ada kategori</td></tr>
             @endforelse
         </x-table>
-        <div class="p-4 border-t">{{ $categories->links() }}</div>
+        <div class="p-4 border-t">{{ $categories->appends(request()->except('page'))->links() }}</div>
     </x-card>
 </x-layout>

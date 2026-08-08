@@ -39,6 +39,6 @@
             <tr><td colspan="5" class="px-4 py-12 text-center text-gray-400">Belum ada user</td></tr>
             @endforelse
         </x-table>
-        <div class="p-4 border-t">{{ $users->links() }}</div>
+        <div class="p-4 border-t">{{ $users->appends(request()->except('page'))->links() }}</div>
     </x-card>
 </x-layout>

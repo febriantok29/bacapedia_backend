@@ -7,7 +7,7 @@
                 <select name="category_id" class="border border-gray-300 rounded-md px-3 py-2 text-sm" required>
                     <option value="">Kategori</option>
                     @foreach($categories as $cat)
-                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                    <option value="{{ $cat['id'] }}">{{ $cat['name'] }}</option>
                     @endforeach
                 </select>
                 <x-input name="title" placeholder="Judul" :required="true" />
@@ -30,7 +30,7 @@
                 <td class="px-4 py-3 font-mono text-xs">{{ $book->book_code }}</td>
                 <td class="px-4 py-3 font-medium">{{ $book->title }}</td>
                 <td class="px-4 py-3">{{ $book->author }}</td>
-                <td class="px-4 py-3">{{ $book->category->name ?? '-' }}</td>
+                <td class="px-4 py-3">{{ $book->category['name'] ?? '-' }}</td>
                 <td class="px-4 py-3">{{ $book->published_year }}</td>
                 <td class="px-4 py-3">
                     <x-badge :variant="$book->stock > 0 ? 'success' : 'danger'">{{ $book->stock }}</x-badge>
@@ -48,6 +48,6 @@
             <tr><td colspan="7" class="px-4 py-12 text-center text-gray-400">Belum ada data buku</td></tr>
             @endforelse
         </x-table>
-        <div class="p-4 border-t">{{ $books->links() }}</div>
+        <div class="p-4 border-t">{{ $books->appends(request()->except('page'))->links() }}</div>
     </x-card>
 </x-layout>
