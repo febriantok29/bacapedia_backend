@@ -6,25 +6,25 @@
             <dl class="space-y-3 text-sm">
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Buku</dt>
-                    <dd class="font-medium">{{ $borrow->book->title ?? '-' }}</dd>
+                    <dd class="font-medium">{{ $borrow->book['title'] ?? '-' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Peminjam</dt>
-                    <dd class="font-medium">{{ $borrow->user->name ?? '-' }}</dd>
+                    <dd class="font-medium">{{ $borrow->user['name'] ?? '-' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Tanggal Pinjam</dt>
-                    <dd>{{ $borrow->borrow_date->format('d M Y') }}</dd>
+                    <dd>{{ date('d M Y', strtotime($borrow->borrow_date)) }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Jatuh Tempo</dt>
-                    <dd class="{{ $borrow->status === 'Aktif' && $borrow->due_date->lt(now()) ? 'text-red-600 font-bold' : '' }}">
-                        {{ $borrow->due_date->format('d M Y') }}
+                    <dd class="{{ $borrow->status === 'Aktif' && strtotime($borrow->due_date) < time() ? 'text-red-600 font-bold' : '' }}">
+                        {{ date('d M Y', strtotime($borrow->due_date)) }}
                     </dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Tanggal Kembali</dt>
-                    <dd>{{ $borrow->return_date ? $borrow->return_date->format('d M Y') : '-' }}</dd>
+                    <dd>{{ $borrow->return_date ? date('d M Y', strtotime($borrow->return_date)) : '-' }}</dd>
                 </div>
                 <div class="flex justify-between items-center">
                     <dt class="text-gray-500">Status</dt>
@@ -50,13 +50,14 @@
         </x-card>
 
         <x-card title="Riwayat Status">
-            @if($borrow->histories && count($borrow->histories) > 0)
+            @if(!empty($borrow->histories))
             <div class="space-y-3">
                 @foreach($borrow->histories as $history)
-                <div class="border-l-4 {{ $history->status === 'Aktif' ? 'border-yellow-400' : ($history->status === 'Terlambat' ? 'border-red-400' : 'border-green-400') }} pl-3 py-1">
-                    <p class="text-sm font-medium">{{ $history->status }}</p>
-                    <p class="text-xs text-gray-500">{{ $history->remarks ?? '-' }}</p>
-                    <p class="text-xs text-gray-400">{{ $history->created_at ? \Carbon\Carbon::parse($history->created_at)->format('d M Y H:i') : '-' }}</p>
+                @php $h = (object) $history; @endphp
+                <div class="border-l-4 {{ $h->status === 'Aktif' ? 'border-yellow-400' : ($h->status === 'Terlambat' ? 'border-red-400' : 'border-green-400') }} pl-3 py-1">
+                    <p class="text-sm font-medium">{{ $h->status }}</p>
+                    <p class="text-xs text-gray-500">{{ $h->remarks ?? '-' }}</p>
+                    <p class="text-xs text-gray-400">{{ $h->created_at ? date('d M Y H:i', strtotime($h->created_at)) : '-' }}</p>
                 </div>
                 @endforeach
             </div>

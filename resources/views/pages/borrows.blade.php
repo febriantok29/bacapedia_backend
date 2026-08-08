@@ -17,7 +17,7 @@
                     <select name="user_id" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
                         <option value="">Semua</option>
                         @foreach($users as $user)
-                        <option value="{{ $user->id }}" @selected(request('user_id') == $user->id)>{{ $user->name }}</option>
+                        <option value="{{ $user['id'] }}" @selected(request('user_id') == $user['id'])>{{ $user['name'] }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -42,7 +42,7 @@
                     <select name="user_id" class="border border-gray-300 rounded-md px-3 py-2 text-sm">
                         <option value="">Diri sendiri</option>
                         @foreach($users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                        <option value="{{ $user['id'] }}">{{ $user['name'] }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -56,9 +56,9 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50">
                 @foreach($books as $book)
                 <label class="flex items-center gap-2 text-sm p-2 hover:bg-white rounded cursor-pointer transition">
-                    <input type="checkbox" name="book_ids[]" value="{{ $book->id }}" class="rounded">
-                    <span class="truncate">{{ $book->title }}</span>
-                    <span class="text-gray-400 text-xs ml-auto">({{ $book->stock }})</span>
+                    <input type="checkbox" name="book_ids[]" value="{{ $book['id'] }}" class="rounded">
+                    <span class="truncate">{{ $book['title'] }}</span>
+                    <span class="text-gray-400 text-xs ml-auto">({{ $book['stock'] }})</span>
                 </label>
                 @endforeach
             </div>
@@ -69,11 +69,11 @@
         <x-table :headers="['Buku', 'Anggota', 'Tgl Pinjam', 'Jatuh Tempo', 'Status', 'Denda', 'Aksi']">
             @forelse($borrows as $borrow)
             <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 font-medium">{{ $borrow->book->title ?? '-' }}</td>
-                <td class="px-4 py-3">{{ $borrow->user->name ?? '-' }}</td>
-                <td class="px-4 py-3 text-xs">{{ $borrow->borrow_date->format('d M Y') }}</td>
-                <td class="px-4 py-3 text-xs {{ $borrow->status === 'Aktif' && $borrow->due_date->lt(now()) ? 'text-red-600 font-bold' : '' }}">
-                    {{ $borrow->due_date->format('d M Y') }}
+                <td class="px-4 py-3 font-medium">{{ $borrow->book['title'] ?? '-' }}</td>
+                <td class="px-4 py-3">{{ $borrow->user['name'] ?? '-' }}</td>
+                <td class="px-4 py-3 text-xs">{{ date('d M Y', strtotime($borrow->borrow_date)) }}</td>
+                <td class="px-4 py-3 text-xs {{ $borrow->status === 'Aktif' && strtotime($borrow->due_date) < time() ? 'text-red-600 font-bold' : '' }}">
+                    {{ date('d M Y', strtotime($borrow->due_date)) }}
                 </td>
                 <td class="px-4 py-3">
                     @php $variant = match($borrow->status) { 'Aktif' => 'warning', 'Terlambat' => 'danger', default => 'success' }; @endphp
