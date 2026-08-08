@@ -9,7 +9,9 @@ use App\Models\Borrow;
 use App\Models\User;
 use App\Services\BorrowService;
 use App\Support\ApiMessages;
+use App\Support\Enums\BorrowStatus;
 use App\Support\Enums\UserRole;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -46,6 +48,11 @@ class BorrowController extends Controller
         $statuses = $this->normalizeFilter($request->input('status'));
         if ($statuses) {
             $query->whereIn('status', $statuses);
+        }
+
+        if ($request->boolean('is_overdue')) {
+            $query->where('status', BorrowStatus::ACTIVE->value)
+                  ->where('due_date', '<', Carbon::today());
         }
 
         $borrows = $query->orderByDesc('created_at')->paginate($request->input('per_page', 15));
