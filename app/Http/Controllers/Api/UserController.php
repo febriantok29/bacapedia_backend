@@ -8,6 +8,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\User;
 use App\Support\ApiErrorCodes;
 use App\Support\ApiMessages;
+use App\Support\Enums\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -63,7 +64,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:128|unique:s_users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:Admin,Petugas,Anggota',
+            'role' => 'required|in:' . implode(',', array_column(UserRole::cases(), 'value')),
         ]);
 
         if ($validator->fails()) {
@@ -99,7 +100,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|email|max:128|unique:s_users,email,' . $id,
-            'role' => 'sometimes|required|in:Admin,Petugas,Anggota',
+            'role' => 'sometimes|required|in:' . implode(',', array_column(UserRole::cases(), 'value')),
         ]);
 
         if ($validator->fails()) {

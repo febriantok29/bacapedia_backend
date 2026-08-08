@@ -8,6 +8,7 @@ use App\Models\BorrowHistory;
 use App\Models\User;
 use App\Support\ApiErrorCodes;
 use App\Support\ApiMessages;
+use App\Support\Enums\BorrowStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -27,7 +28,7 @@ class BorrowService
 
         $maxBorrows = ConfigService::getInt('max_active_borrows', 3);
         $activeBorrows = Borrow::where('user_id', $user->id)
-            ->where('status', 'Aktif')
+            ->where('status', BorrowStatus::ACTIVE->value)
             ->count();
 
         if ($activeBorrows >= $maxBorrows) {
@@ -37,7 +38,7 @@ class BorrowService
 
         $alreadyBorrowed = Borrow::where('user_id', $user->id)
             ->where('book_id', $bookId)
-            ->where('status', 'Aktif')
+            ->where('status', BorrowStatus::ACTIVE->value)
             ->exists();
 
         if ($alreadyBorrowed) {
@@ -54,7 +55,7 @@ class BorrowService
                 'book_id' => $bookId,
                 'borrow_date' => $borrowDate,
                 'due_date' => $dueDate,
-                'status' => 'Aktif',
+                'status' => BorrowStatus::ACTIVE->value,
                 'penalty' => 0,
             ]);
 
@@ -65,7 +66,7 @@ class BorrowService
 
             BorrowHistory::create([
                 'borrow_id' => $borrow->id,
-                'status' => 'Aktif',
+                'status' => BorrowStatus::ACTIVE->value,
                 'remarks' => 'Peminjaman baru',
                 'created_at' => now(),
                 'created_by' => $performedBy,
@@ -87,20 +88,20 @@ class BorrowService
             return $this->fail(ApiErrorCodes::NOT_FOUND, ApiMessages::BORROW_NOT_FOUND, 404);
         }
 
-        if ($borrow->status === 'Dikembalikan') {
+        if ($borrow->status === BorrowStatus::RETURNED->value) {
             return $this->fail(ApiErrorCodes::CONFLICT, ApiMessages::ALREADY_RETURNED, 409);
         }
 
         $returnDate = Carbon::today();
         $dueDate = Carbon::parse($borrow->due_date);
         $penalty = 0;
-        $status = 'Dikembalikan';
+        $status = BorrowStatus::RETURNED->value;
 
         if ($returnDate->greaterThan($dueDate)) {
             $daysLate = $returnDate->diffInDays($dueDate);
             $penaltyPerDay = ConfigService::getInt('penalty_per_day', 2000);
             $penalty = $daysLate * $penaltyPerDay;
-            $status = 'Terlambat';
+            $status = BorrowStatus::OVERDUE->value;
         }
 
         DB::transaction(function () use ($borrow, $returnDate, $penalty, $status, $performedBy) {
@@ -112,7 +113,7 @@ class BorrowService
 
             $borrow->book->increment('stock');
 
-            $remarks = $status === 'Terlambat'
+            $remarks = $status === BorrowStatus::OVERDUE->value
                 ? 'Dikembalikan terlambat, denda Rp' . number_format($penalty, 0, ',', '.')
                 : 'Dikembalikan tepat waktu';
 

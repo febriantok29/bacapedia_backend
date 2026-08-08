@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Category;
 use App\Support\ApiMessages;
+use App\Support\Enums\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -18,7 +19,7 @@ class CategoryController extends Controller
 
         $query = Category::query();
 
-        if ($user->role === 'Admin' && $request->boolean('with_trashed')) {
+        if ($user->role === UserRole::ADMIN->value && $request->boolean('with_trashed')) {
             $query->withTrashed();
         }
 
@@ -37,7 +38,7 @@ class CategoryController extends Controller
 
         $query = Category::withCount('books');
 
-        if ($user->role === 'Admin' && $request->boolean('with_trashed')) {
+        if ($user->role === UserRole::ADMIN->value && $request->boolean('with_trashed')) {
             $query->withTrashed();
         }
 
@@ -54,7 +55,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== 'Admin') {
+        if ($user->role !== UserRole::ADMIN->value) {
             return ApiResponse::forbidden();
         }
 
@@ -80,7 +81,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== 'Admin') {
+        if ($user->role !== UserRole::ADMIN->value) {
             return ApiResponse::forbidden();
         }
 
@@ -109,7 +110,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== 'Admin') {
+        if ($user->role !== UserRole::ADMIN->value) {
             return ApiResponse::forbidden();
         }
 
