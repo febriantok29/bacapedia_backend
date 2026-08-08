@@ -23,8 +23,10 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('books', BookController::class);
 
         Route::get('/borrows', [BorrowController::class, 'index']);
+        Route::get('/borrows/summary', [BorrowController::class, 'summary']);
         Route::post('/borrows', [BorrowController::class, 'store']);
         Route::get('/borrows/{id}', [BorrowController::class, 'show']);
+        Route::put('/borrows/{id}', [BorrowController::class, 'update']);
         Route::post('/borrows/{id}/return', [BorrowController::class, 'returnBook']);
     });
 

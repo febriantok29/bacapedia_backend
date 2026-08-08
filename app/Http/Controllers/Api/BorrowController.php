@@ -105,7 +105,9 @@ class BorrowController extends Controller
             $borrowUser = $targetUser;
         }
 
-        $result = $this->borrowService->borrow($borrowUser, $request->book_id, $user->id);
+        $result = $this->borrowService->borrow($borrowUser, $request->book_id, $user->id, [
+            'borrow_date' => $request->input('borrow_date'),
+        ]);
 
         if (!$result['success']) {
             return ApiResponse::error($result['code'], $result['message'], $result['status']);
@@ -129,5 +131,59 @@ class BorrowController extends Controller
         }
 
         return ApiResponse::success($result['data'], ApiMessages::RETURN_SUCCESS);
+    }
+
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $user = $request->attributes->get('jwt_user');
+
+        if ($user->role !== UserRole::ADMIN->value) {
+            return ApiResponse::forbidden();
+        }
+
+        $borrow = Borrow::find($id);
+
+        if (!$borrow) {
+            return ApiResponse::notFound(ApiMessages::BORROW_NOT_FOUND);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'borrow_date' => 'sometimes|required|date',
+            'due_date' => 'sometimes|required|date',
+            'return_date' => 'sometimes|nullable|date',
+            'status' => 'sometimes|required|in:' . implode(',', array_column(BorrowStatus::cases(), 'value')),
+            'penalty' => 'sometimes|required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::validationError($validator->errors());
+        }
+
+        $borrow->fill($request->only(['borrow_date', 'due_date', 'return_date', 'status', 'penalty']));
+        $borrow->updated_by = $user->id;
+        $borrow->save();
+
+        $borrow->load(['book:id,book_code,title,author', 'user:id,user_code,name']);
+
+        return ApiResponse::success($borrow, ApiMessages::DATA_UPDATED);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $totalActive = Borrow::where('status', BorrowStatus::ACTIVE->value)->count();
+        $totalOverdue = Borrow::where('status', BorrowStatus::ACTIVE->value)
+            ->where('due_date', '<', Carbon::today())
+            ->count();
+        $totalReturned = Borrow::where('status', BorrowStatus::RETURNED->value)->count();
+        $totalLate = Borrow::where('status', BorrowStatus::OVERDUE->value)->count();
+        $totalPenaltyCollected = Borrow::where('penalty', '>', 0)->sum('penalty');
+
+        return ApiResponse::success([
+            'total_active' => $totalActive,
+            'total_overdue' => $totalOverdue,
+            'total_returned' => $totalReturned,
+            'total_late_returned' => $totalLate,
+            'total_penalty_collected' => (float) $totalPenaltyCollected,
+        ]);
     }
 }
