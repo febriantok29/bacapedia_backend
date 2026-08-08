@@ -1,6 +1,6 @@
-# Bacapedia — Sistem Manajemen Perpustakaan Digital
+# Bacapedia, Sistem Manajemen Perpustakaan Digital
 
-Backend API + Web UI untuk sistem manajemen perpustakaan digital "Bacapedia" — Perpustakaan Kota Sejahtera.
+Backend API + Web UI untuk sistem manajemen perpustakaan digital "Bacapedia"
 
 ## Tech Stack
 
