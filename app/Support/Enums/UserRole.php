@@ -8,4 +8,3 @@ enum UserRole: string
     case OFFICER = 'Petugas';
     case MEMBER = 'Anggota';
 }
-aa
