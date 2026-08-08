@@ -1,6 +1,6 @@
-# Bacapedia — Sistem Manajemen Perpustakaan Digital
+# Bacapedia, Sistem Manajemen Perpustakaan Digital
 
-Backend API untuk sistem manajemen perpustakaan digital "Bacapedia" — Perpustakaan Kota Sejahtera.
+Backend API + Web UI untuk sistem manajemen perpustakaan digital "Bacapedia"
 
 ## Tech Stack
 
@@ -9,6 +9,7 @@ Backend API untuk sistem manajemen perpustakaan digital "Bacapedia" — Perpusta
 - MariaDB/MySQL
 - JWT Authentication (firebase/php-jwt)
 - DomPDF (barryvdh/laravel-dompdf)
+- Tailwind CSS (CDN)
 
 ## Instalasi
 
@@ -28,23 +29,22 @@ php -r "echo bin2hex(random_bytes(32));"
 ```
 Copy hasilnya ke `.env` field `JWT_SECRET=`.
 
-## Setup Database
+## Konfigurasi Database
 
-Buat database `bacapedia_backend` di MySQL/MariaDB, lalu:
+Edit `.env`:
+```env
+DB_CONNECTION=mariadb
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=bacapedia_backend
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Buat database `bacapedia_backend`, lalu jalankan:
 ```bash
 php artisan migrate --seed
 ```
-atau
-```bash
-php artisan migrate:fresh --seed
-```
-
-Data seeder:
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@bacapedia.com | password123 |
-| Petugas | rina@bacapedia.com | password123 |
-| Anggota | budi@gmail.com | password123 |
 
 ## Menjalankan Server
 
@@ -52,7 +52,16 @@ Data seeder:
 php artisan serve
 ```
 
-Server berjalan di `http://localhost:8000`
+- Web UI: `http://localhost:8000`
+- API: `http://localhost:8000/api/v1/`
+
+## Akun Testing (Seeder)
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@bacapedia.com | password123 |
+| Petugas | rina@bacapedia.com | password123 |
+| Anggota | budi@gmail.com | password123 |
 
 ## Artisan Commands
 
@@ -64,41 +73,18 @@ php artisan cache:clear             # Clear cache
 php artisan config:clear            # Clear config cache
 ```
 
-## Struktur Project
+## Halaman Web UI
 
-```
-app/
-├── Http/
-│   ├── Controllers/Api/    → AuthController, BookController, BorrowController,
-│   │                         CategoryController, UserController
-│   ├── Middleware/          → JwtMiddleware
-│   └── Responses/          → ApiResponse (centralized)
-├── Models/                 → User, Book, Category, Borrow, BorrowHistory,
-│                             Config, ErrorLog, PasswordReset
-├── Services/               → JwtService, BorrowService, ConfigService
-└── Support/                → ApiErrorCodes, ApiMessages
-
-database/
-├── migrations/             → 8 migration files
-└── seeders/                → Users, Categories, Books, Config, Borrows
-
-routes/
-├── api.php                 → Semua API routes (prefix /api/v1)
-└── web.php                 → Root endpoint
-```
-
-## Struktur Database
-
-| Tabel | Tipe | Keterangan |
-|-------|------|-----------|
-| `s_users` | System | Data pengguna (Admin, Petugas, Anggota) |
-| `m_categories` | Master | Kategori buku |
-| `m_books` | Master | Data buku |
-| `t_borrows` | Transaksi | Data peminjaman |
-| `h_borrows` | History | Log perubahan status peminjaman |
-| `s_config` | System | Konfigurasi dinamis (batas pinjam, denda, durasi) |
-| `s_error_logs` | System | Log error internal |
-| `s_password_resets` | System | Token reset password |
+| URL | Auth | Keterangan |
+|-----|------|-----------|
+| `/login` | - | Login |
+| `/register` | - | Daftar anggota baru |
+| `/` | Login | Dashboard statistik |
+| `/books` | Login | Katalog buku (Admin/Petugas bisa CRUD) |
+| `/categories` | Login | Kategori buku (Admin/Petugas bisa CRUD) |
+| `/borrows` | Login | Peminjaman (multi-borrow, return, filter) |
+| `/borrows/{id}` | Login | Detail peminjaman + riwayat status |
+| `/users` | Admin | Manajemen user |
 
 ## Daftar Endpoint API
 
@@ -136,9 +122,11 @@ routes/
 
 | Method | Endpoint | Auth | Keterangan |
 |--------|----------|------|-----------|
-| GET | `/api/v1/borrows` | JWT | Riwayat peminjaman (filter: status, user_id) |
+| GET | `/api/v1/borrows` | JWT | Riwayat peminjaman (filter: status, user_id, is_overdue) |
+| GET | `/api/v1/borrows/summary` | JWT | Statistik peminjaman |
 | POST | `/api/v1/borrows` | JWT | Pinjam buku |
 | GET | `/api/v1/borrows/{id}` | JWT | Detail peminjaman + history |
+| PUT | `/api/v1/borrows/{id}` | JWT (Admin) | Update data peminjaman |
 | POST | `/api/v1/borrows/{id}/return` | JWT (Admin/Petugas) | Proses pengembalian |
 
 ### Manajemen User (Admin Only)
@@ -152,6 +140,16 @@ routes/
 | DELETE | `/api/v1/users/{id}` | JWT (Admin) | Hapus user |
 | POST | `/api/v1/users/{id}/reset-password` | JWT (Admin) | Reset password |
 
+### Konfigurasi (Admin Only)
+
+| Method | Endpoint | Auth | Keterangan |
+|--------|----------|------|-----------|
+| GET | `/api/v1/configs` | JWT (Admin) | List config |
+| POST | `/api/v1/configs` | JWT (Admin) | Buat config |
+| GET | `/api/v1/configs/{id}` | JWT (Admin) | Detail config |
+| PUT | `/api/v1/configs/{id}` | JWT (Admin) | Update config |
+| DELETE | `/api/v1/configs/{id}` | JWT (Admin) | Hapus config |
+
 ## Aturan Bisnis
 
 1. Anggota hanya dapat meminjam buku jika stok > 0
@@ -162,7 +160,51 @@ routes/
 6. Hanya Admin yang dapat menghapus data buku atau kategori
 7. Password wajib terenkripsi (bcrypt)
 
-## Format Response
+## Struktur Database
+
+| Tabel | Tipe | Keterangan |
+|-------|------|-----------|
+| `s_users` | System | Data pengguna (Admin, Petugas, Anggota) |
+| `m_categories` | Master | Kategori buku |
+| `m_books` | Master | Data buku |
+| `t_borrows` | Transaksi | Data peminjaman |
+| `h_borrows` | History | Log perubahan status peminjaman |
+| `s_config` | System | Konfigurasi dinamis (batas pinjam, denda, durasi) |
+| `s_error_logs` | System | Log error internal |
+| `s_password_resets` | System | Token reset password |
+
+## Struktur Project
+
+```
+app/
+├── Http/
+│   ├── Controllers/
+│   │   ├── Api/            → AuthController, BookController, BorrowController,
+│   │   │                     CategoryController, ConfigController, UserController
+│   │   ├── Concerns/       → NormalizesFilterValues trait
+│   │   └── WebController   → Blade panel controller
+│   ├── Middleware/          → JwtMiddleware, PanelAuth
+│   └── Responses/          → ApiResponse (centralized)
+├── Models/                 → User, Book, Category, Borrow, BorrowHistory,
+│                             Config, ErrorLog, PasswordReset
+├── Services/               → JwtService, BorrowService, ConfigService
+└── Support/
+    ├── Enums/              → UserRole, BorrowStatus
+    ├── ApiErrorCodes.php
+    └── ApiMessages.php
+
+resources/views/
+├── components/             → layout, guest-layout, card, table, alert,
+│                             badge, button, input, sidebar-link, stat-card
+└── pages/                  → login, register, dashboard, books,
+                              categories, users, borrows, borrow-detail
+
+database/
+├── migrations/             → 8 migration files
+└── seeders/                → Users, Categories, Books, Config, Borrows
+```
+
+## Format Response API
 
 ### Success
 ```json
@@ -187,6 +229,6 @@ routes/
 
 | Role | Hak Akses |
 |------|-----------|
-| Admin | Mengelola buku, kategori, anggota; melihat semua peminjaman |
-| Petugas | Memproses peminjaman dan pengembalian |
+| Admin | Mengelola user, melihat semua data, konfigurasi sistem |
+| Petugas | Mengelola buku, kategori, memproses peminjaman dan pengembalian |
 | Anggota | Melihat katalog, meminjam buku, melihat riwayat sendiri |
