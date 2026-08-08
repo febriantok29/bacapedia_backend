@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\BorrowController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Support\Facades\Route;
@@ -16,7 +17,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('jwt')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
-        Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::delete('/auth/logout', [AuthController::class, 'logout']);
 
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('books', BookController::class);
@@ -30,6 +31,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('jwt:Admin')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+        Route::apiResource('configs', ConfigController::class);
     });
 
 });
