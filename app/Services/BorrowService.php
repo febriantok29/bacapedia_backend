@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class BorrowService
 {
-    public function borrow(User $user, string $bookId, string $performedBy): array
+    public function borrow(User $user, string $bookId, string $performedBy, array $options = []): array
     {
         $book = Book::find($bookId);
 
@@ -47,6 +47,11 @@ class BorrowService
 
         $borrowDays = ConfigService::getInt('borrow_duration_days', 7);
         $borrowDate = Carbon::today();
+
+        if (config('app.debug') && !empty($options['borrow_date'])) {
+            $borrowDate = Carbon::parse($options['borrow_date']);
+        }
+
         $dueDate = $borrowDate->copy()->addDays($borrowDays);
 
         $borrow = DB::transaction(function () use ($user, $bookId, $book, $borrowDate, $dueDate, $performedBy) {
