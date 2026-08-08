@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\JwtService;
 use App\Support\ApiErrorCodes;
 use App\Support\ApiMessages;
+use App\Support\Enums\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -41,7 +42,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => strtolower($request->email),
             'password' => Hash::make($request->password),
-            'role' => 'Anggota',
+            'role' => UserRole::MEMBER->value,
         ]);
 
         $user->created_by = $user->id;

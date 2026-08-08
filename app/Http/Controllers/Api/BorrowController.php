@@ -9,6 +9,7 @@ use App\Models\Borrow;
 use App\Models\User;
 use App\Services\BorrowService;
 use App\Support\ApiMessages;
+use App\Support\Enums\UserRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -30,7 +31,7 @@ class BorrowController extends Controller
 
         $query = Borrow::with(['book:id,book_code,title,author', 'user:id,user_code,name']);
 
-        if ($user->role === 'Anggota') {
+        if ($user->role === UserRole::MEMBER->value) {
             $query->where('user_id', $user->id);
         } else {
             if ($request->has('user_id')) {
@@ -58,7 +59,7 @@ class BorrowController extends Controller
 
         $query = Borrow::with(['book:id,book_code,title,author,publisher', 'user:id,user_code,name,email', 'histories']);
 
-        if (in_array($user->role, ['Admin', 'Petugas']) && $request->boolean('with_trashed')) {
+        if (in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value]) && $request->boolean('with_trashed')) {
             $query->withTrashed();
         }
 
@@ -68,7 +69,7 @@ class BorrowController extends Controller
             return ApiResponse::notFound(ApiMessages::BORROW_NOT_FOUND);
         }
 
-        if ($user->role === 'Anggota' && $borrow->user_id !== $user->id) {
+        if ($user->role === UserRole::MEMBER->value && $borrow->user_id !== $user->id) {
             return ApiResponse::forbidden();
         }
 
@@ -89,7 +90,7 @@ class BorrowController extends Controller
 
         $borrowUser = $user;
 
-        if (in_array($user->role, ['Admin', 'Petugas']) && $request->has('user_id')) {
+        if (in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value]) && $request->has('user_id')) {
             $targetUser = User::find($request->user_id);
             if (!$targetUser) {
                 return ApiResponse::notFound(ApiMessages::USER_NOT_FOUND);
@@ -110,7 +111,7 @@ class BorrowController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if (!in_array($user->role, ['Admin', 'Petugas'])) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden(ApiMessages::RETURN_FORBIDDEN);
         }
 
