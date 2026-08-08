@@ -11,8 +11,8 @@ class PanelAuth
 {
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (!Session::has('access_token')) {
-            return redirect('/panel/login');
+        if (!Session::has('user_id')) {
+            return redirect('/login');
         }
 
         if ($roles && !in_array(Session::get('user_role'), $roles)) {
