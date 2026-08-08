@@ -34,6 +34,10 @@ Buat database `bacapedia_backend` di MySQL/MariaDB, lalu:
 ```bash
 php artisan migrate --seed
 ```
+atau
+```bash
+php artisan migrate:fresh --seed
+```
 
 Data seeder:
 | Role | Email | Password |
