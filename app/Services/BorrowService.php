@@ -88,7 +88,7 @@ class BorrowService
             return $this->fail(ApiErrorCodes::NOT_FOUND, ApiMessages::BORROW_NOT_FOUND, 404);
         }
 
-        if ($borrow->status === BorrowStatus::RETURNED->value) {
+        if (in_array($borrow->status, [BorrowStatus::RETURNED->value, BorrowStatus::OVERDUE->value])) {
             return $this->fail(ApiErrorCodes::CONFLICT, ApiMessages::ALREADY_RETURNED, 409);
         }
 
@@ -98,7 +98,7 @@ class BorrowService
         $status = BorrowStatus::RETURNED->value;
 
         if ($returnDate->greaterThan($dueDate)) {
-            $daysLate = $returnDate->diffInDays($dueDate);
+            $daysLate = $dueDate->diffInDays($returnDate);
             $penaltyPerDay = ConfigService::getInt('penalty_per_day', 2000);
             $penalty = $daysLate * $penaltyPerDay;
             $status = BorrowStatus::OVERDUE->value;
