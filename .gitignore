@@ -1,0 +1,41 @@
+# Laravel
+/vendor
+/public/build
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+/storage/*.key
+/storage/pail
+/node_modules
+/auth.json
+*.log
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# Testing
+/.phpunit.cache
+.phpunit.result.cache
+
+# IDE & Editor
+/.idea
+/.nova
+/.vscode
+/.zed
+.phpactor.json
+_ide_helper.php
+
+# AI Tools
+/.codex
+/.cursor/
+/.kiro/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Legacy
+Homestead.json
+Homestead.yaml
