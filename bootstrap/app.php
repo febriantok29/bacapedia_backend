@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\JwtMiddleware;
+use App\Http\Middleware\PanelAuth;
 use App\Http\Responses\ApiResponse;
 use App\Models\ErrorLog;
 use App\Support\ApiErrorCodes;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'jwt' => JwtMiddleware::class,
+            'panel.auth' => PanelAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
