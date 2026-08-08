@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\NormalizesFilterValues;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
+    use NormalizesFilterValues;
+
     public function index(Request $request): JsonResponse
     {
         $query = User::query();
@@ -31,8 +34,9 @@ class UserController extends Controller
             });
         }
 
-        if ($request->has('role')) {
-            $query->where('role', $request->role);
+        $roles = $this->normalizeFilter($request->input('role'));
+        if ($roles) {
+            $query->whereIn('role', $roles);
         }
 
         $users = $query->orderBy('name')->paginate($request->input('per_page', 15));

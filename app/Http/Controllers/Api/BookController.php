@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\NormalizesFilterValues;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Book;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Validator;
 
 class BookController extends Controller
 {
+    use NormalizesFilterValues;
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->attributes->get('jwt_user');
@@ -32,8 +35,9 @@ class BookController extends Controller
             });
         }
 
-        if ($request->has('category_id')) {
-            $query->where('category_id', $request->category_id);
+        $categoryIds = $this->normalizeFilter($request->input('category_id'));
+        if ($categoryIds) {
+            $query->whereIn('category_id', $categoryIds);
         }
 
         if ($request->has('published_year')) {

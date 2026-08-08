@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\NormalizesFilterValues;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Borrow;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Validator;
 
 class BorrowController extends Controller
 {
+    use NormalizesFilterValues;
+
     private BorrowService $borrowService;
 
     public function __construct(BorrowService $borrowService)
@@ -39,8 +42,9 @@ class BorrowController extends Controller
             }
         }
 
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        $statuses = $this->normalizeFilter($request->input('status'));
+        if ($statuses) {
+            $query->whereIn('status', $statuses);
         }
 
         $borrows = $query->orderByDesc('created_at')->paginate($request->input('per_page', 15));
