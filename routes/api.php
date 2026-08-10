@@ -17,7 +17,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('jwt')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
-        Route::delete('/auth/logout', [AuthController::class, 'logout']);
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
 
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('books', BookController::class);
@@ -30,8 +30,15 @@ Route::prefix('v1')->group(function () {
         Route::post('/borrows/{id}/return', [BorrowController::class, 'returnBook']);
     });
 
+    Route::middleware('jwt:Admin,Petugas')->group(function () {
+        Route::get('/users', [UserController::class, 'index']);
+    });
+
     Route::middleware('jwt:Admin')->group(function () {
-        Route::apiResource('users', UserController::class);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::get('/users/{id}', [UserController::class, 'show']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
         Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
         Route::apiResource('configs', ConfigController::class);
     });
