@@ -6,11 +6,11 @@
             <dl class="space-y-3 text-sm">
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Buku</dt>
-                    <dd class="font-medium">{{ $borrow->book['title'] ?? '-' }}</dd>
+                    <dd class="font-medium">{{ $borrow->book->title ?? '-' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Peminjam</dt>
-                    <dd class="font-medium">{{ $borrow->user['name'] ?? '-' }}</dd>
+                    <dd class="font-medium">{{ $borrow->user->name ?? '-' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Tanggal Pinjam</dt>

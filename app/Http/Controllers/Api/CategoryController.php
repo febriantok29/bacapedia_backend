@@ -17,7 +17,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        $query = Category::query();
+        $query = Category::withCount('books');
 
         if ($user->role === UserRole::ADMIN->value && $request->boolean('with_trashed')) {
             $query->withTrashed();
@@ -55,7 +55,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== UserRole::ADMIN->value) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden();
         }
 
@@ -81,7 +81,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== UserRole::ADMIN->value) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden();
         }
 
@@ -110,7 +110,7 @@ class CategoryController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== UserRole::ADMIN->value) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden();
         }
 

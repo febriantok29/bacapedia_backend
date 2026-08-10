@@ -71,6 +71,7 @@ class WebController extends Controller
         }
 
         return view('pages.dashboard', [
+            'isMember' => Session::get('user_role') === 'Anggota',
             'totalBooks' => $books['metadata']['total'] ?? 0,
             'totalCategories' => $categories['metadata']['total'] ?? 0,
             'totalUsers' => $totalUsers,
@@ -85,11 +86,10 @@ class WebController extends Controller
     public function books(Request $request)
     {
         $params = $this->filterQuery($request, ['search', 'category_id', 'published_year', 'page', 'per_page']);
-        $data = $this->api->get('/books', $params);
         $categories = $this->api->get('/categories', ['per_page' => 100]);
 
         return view('pages.books', [
-            'books' => $this->toPaginator($data, $request),
+            'books' => $this->api->paginated('/books', $params, $request),
             'categories' => $categories['data'] ?? [],
         ]);
     }
@@ -126,10 +126,9 @@ class WebController extends Controller
     public function categories(Request $request)
     {
         $params = $this->filterQuery($request, ['search', 'page', 'per_page']);
-        $data = $this->api->get('/categories', $params);
 
         return view('pages.categories', [
-            'categories' => $this->toPaginator($data, $request),
+            'categories' => $this->api->paginated('/categories', $params, $request),
         ]);
     }
 
@@ -155,14 +154,12 @@ class WebController extends Controller
             $params['is_overdue'] = '1';
         }
 
-        $data = $this->api->get('/borrows', $params);
         $booksData = $this->api->get('/books', ['per_page' => 100]);
-
         $isStaff = in_array(Session::get('user_role'), ['Admin', 'Petugas']);
         $usersData = $isStaff ? $this->api->get('/users', ['per_page' => 100]) : ['data' => []];
 
         return view('pages.borrows', [
-            'borrows' => $this->toPaginator($data, $request),
+            'borrows' => $this->api->paginated('/borrows', $params, $request),
             'books' => $booksData['data'] ?? [],
             'users' => $usersData['data'] ?? [],
             'isStaff' => $isStaff,
@@ -177,7 +174,7 @@ class WebController extends Controller
             return redirect('/borrows')->with('error', $res['message'] ?? 'Data tidak ditemukan');
         }
 
-        return view('pages.borrow-detail', ['borrow' => (object) $res['data']]);
+        return view('pages.borrow-detail', ['borrow' => $this->api->toObject($res['data'])]);
     }
 
     public function storeBorrow(Request $request)
@@ -241,10 +238,9 @@ class WebController extends Controller
     public function users(Request $request)
     {
         $params = $this->filterQuery($request, ['search', 'role', 'page', 'per_page']);
-        $data = $this->api->get('/users', $params);
 
         return view('pages.users', [
-            'users' => $this->toPaginator($data, $request),
+            'users' => $this->api->paginated('/users', $params, $request),
         ]);
     }
 
@@ -313,19 +309,5 @@ class WebController extends Controller
             }
         }
         return $params;
-    }
-
-    private function toPaginator(array $apiResponse, Request $request)
-    {
-        $items = $apiResponse['data'] ?? [];
-        $metadata = $apiResponse['metadata'] ?? [];
-
-        return new \Illuminate\Pagination\LengthAwarePaginator(
-            collect($items)->map(fn($item) => (object) $item),
-            $metadata['total'] ?? count($items),
-            $metadata['per_page'] ?? 15,
-            $metadata['current_page'] ?? 1,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
     }
 }

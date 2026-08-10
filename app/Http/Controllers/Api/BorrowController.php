@@ -170,13 +170,20 @@ class BorrowController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
-        $totalActive = Borrow::where('status', BorrowStatus::ACTIVE->value)->count();
-        $totalOverdue = Borrow::where('status', BorrowStatus::ACTIVE->value)
+        $user = $request->attributes->get('jwt_user');
+        $query = Borrow::query();
+
+        if ($user->role === UserRole::MEMBER->value) {
+            $query->where('user_id', $user->id);
+        }
+
+        $totalActive = (clone $query)->where('status', BorrowStatus::ACTIVE->value)->count();
+        $totalOverdue = (clone $query)->where('status', BorrowStatus::ACTIVE->value)
             ->where('due_date', '<', Carbon::today())
             ->count();
-        $totalReturned = Borrow::where('status', BorrowStatus::RETURNED->value)->count();
-        $totalLate = Borrow::where('status', BorrowStatus::OVERDUE->value)->count();
-        $totalPenaltyCollected = Borrow::where('penalty', '>', 0)->sum('penalty');
+        $totalReturned = (clone $query)->where('status', BorrowStatus::RETURNED->value)->count();
+        $totalLate = (clone $query)->where('status', BorrowStatus::OVERDUE->value)->count();
+        $totalPenaltyCollected = (clone $query)->where('penalty', '>', 0)->sum('penalty');
 
         return ApiResponse::success([
             'total_active' => $totalActive,
