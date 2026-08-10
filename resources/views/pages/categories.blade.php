@@ -19,6 +19,14 @@
                 <td class="px-4 py-3">{{ $cat->books_count ?? '-' }}</td>
                 @if(in_array(session('user_role'), ['Admin', 'Petugas']))
                 <td class="px-4 py-3">
+                    <details class="inline">
+                        <summary class="text-blue-600 cursor-pointer text-xs">Edit</summary>
+                        <form method="POST" action="/categories/{{ $cat->id }}/update" class="mt-2 bg-gray-50 border rounded p-3 w-64 space-y-2">
+                            @csrf
+                            <input type="text" name="name" value="{{ $cat->name }}" class="w-full border rounded px-2 py-1 text-sm" required>
+                            <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-xs">Simpan</button>
+                        </form>
+                    </details>
                     <form method="POST" action="/categories/{{ $cat->id }}/delete" class="inline">
                         @csrf
                         <button type="submit" class="text-red-600 hover:underline text-xs" onclick="return confirm('Hapus kategori ini?')">Hapus</button>

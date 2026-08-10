@@ -55,10 +55,10 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded-lg p-3 bg-gray-50">
                 @foreach($books as $book)
-                <label class="flex items-center gap-2 text-sm p-2 hover:bg-white rounded cursor-pointer transition">
-                    <input type="checkbox" name="book_ids[]" value="{{ $book['id'] }}" class="rounded">
+                <label class="flex items-center gap-2 text-sm p-2 hover:bg-white rounded {{ $book['stock'] > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed' }} transition">
+                    <input type="checkbox" name="book_ids[]" value="{{ $book['id'] }}" class="rounded" {{ $book['stock'] <= 0 ? 'disabled' : '' }}>
                     <span class="truncate">{{ $book['title'] }}</span>
-                    <span class="text-gray-400 text-xs ml-auto">({{ $book['stock'] }})</span>
+                    <span class="text-xs ml-auto {{ $book['stock'] > 0 ? 'text-gray-400' : 'text-red-500' }}">({{ $book['stock'] > 0 ? 'stok ' . $book['stock'] : 'habis' }})</span>
                 </label>
                 @endforeach
             </div>
@@ -69,8 +69,8 @@
         <x-table :headers="['Buku', 'Anggota', 'Tgl Pinjam', 'Jatuh Tempo', 'Status', 'Denda', 'Aksi']">
             @forelse($borrows as $borrow)
             <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 font-medium">{{ $borrow->book['title'] ?? '-' }}</td>
-                <td class="px-4 py-3">{{ $borrow->user['name'] ?? '-' }}</td>
+                <td class="px-4 py-3 font-medium">{{ $borrow->book->title ?? '-' }}</td>
+                <td class="px-4 py-3">{{ $borrow->user->name ?? '-' }}</td>
                 <td class="px-4 py-3 text-xs">{{ date('d M Y', strtotime($borrow->borrow_date)) }}</td>
                 <td class="px-4 py-3 text-xs {{ $borrow->status === 'Aktif' && strtotime($borrow->due_date) < time() ? 'text-red-600 font-bold' : '' }}">
                     {{ date('d M Y', strtotime($borrow->due_date)) }}
