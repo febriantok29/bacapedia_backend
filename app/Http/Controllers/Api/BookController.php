@@ -73,7 +73,7 @@ class BookController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== UserRole::ADMIN->value) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden();
         }
 
@@ -113,7 +113,7 @@ class BookController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== UserRole::ADMIN->value) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden();
         }
 
@@ -150,7 +150,7 @@ class BookController extends Controller
     {
         $user = $request->attributes->get('jwt_user');
 
-        if ($user->role !== UserRole::ADMIN->value) {
+        if (!in_array($user->role, [UserRole::ADMIN->value, UserRole::OFFICER->value])) {
             return ApiResponse::forbidden();
         }
 
